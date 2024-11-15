@@ -8,5 +8,5 @@ exports.register = (req, res)=>{
 
 exports.login = (req, res)=>{
     //code
-    res.send('Hello Login in Contro')
+    res.send('Hello Login in Controller')
 }
