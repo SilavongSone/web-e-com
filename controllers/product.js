@@ -1,12 +1,13 @@
 const prisma = require("../config/prisma");
+
 exports.create = async (req, res) => {
   try {
     // code
-    const { name, description, price, quantity, categoryId, images } = req.body;
+    const { title, description, price, quantity, categoryId, images } = req.body
     // console.log(title, description, price, quantity, images)
     const product = await prisma.product.create({
       data: {
-        name: name,
+        title: title,
         description: description,
         price: parseFloat(price),
         quantity: parseInt(quantity),
@@ -16,42 +17,37 @@ exports.create = async (req, res) => {
             asset_id: item.asset_id,
             public_id: item.public_id,
             url: item.url,
-            secure_url: item.secure_url,
-          })),
-        },
-      },
-    });
-    res.send(product);
+            secure_url: item.secure_url
+          }))
+        }
+      }
+    })
+    res.send(product)
   } catch (err) {
-    console.log(err);
-    res
-      .status(500)
-      .json({ message: "Server Error In Controllers/Create Product" });
+    console.log(err)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
+
 
 exports.list = async (req, res) => {
   try {
-    //code
-    const { count } = req.params;
-    const products = await prisma.product.findMany({
-      take: parseInt(count),
-      orderBy: { created: "desc" },
-      include: {
-        category: true,
-        images: true,
-      },
-    });
-
-    res.send(products);
+      // code
+      const { count } = req.params
+      const products = await prisma.product.findMany({
+          take: parseInt(count),
+          orderBy: { createdAt: "desc" },
+          include: {
+              category: true,
+              images: true
+          }
+      })
+      res.send(products)
   } catch (err) {
-    //err
-    console.log(err);
-    res
-      .status(500)
-      .json({ massage: "Server Error In Controllers/List Product" });
+      console.log(err)
+      res.status(500).json({ message: "Server error" })
   }
-};
+}
 exports.read = async (req, res) => {
   try {
     //code
@@ -77,48 +73,42 @@ exports.read = async (req, res) => {
 };
 exports.update = async (req, res) => {
   try {
-    //code
-    const { id } = req.params;
-    const { name, description, price, quantity, categoryId, images } = req.body;
+      // code
+      const { title, description, price, quantity, categoryId, images } = req.body
+      // console.log(title, description, price, quantity, images)
 
-    // clear images
-    await prisma.image.deleteMany({
-      where: {
-        productId: Number(req.params.id),
-      },
-    });
+      await prisma.image.deleteMany({
+          where: {
+              productId: Number(req.params.id)
+          }
+      })
 
-    const product = await prisma.product.update({
-      where: {
-        id: Number(req.params.id),
-      },
-      data: {
-        name: name,
-        description: description,
-        price: parseFloat(price),
-        quantity: parseInt(quantity),
-        categoryId: parseInt(categoryId),
-        images: {
-          create: images.map((item) => ({
-            asset_id: item.asset_id,
-            public_id: item.public_id,
-            url: item.url,
-            secure_url: item.secure_url,
-          })),
-        },
-      },
-    });
-    res.send(product);
-
-    // res.send("Hello Update Product Controller");
+      const product = await prisma.product.update({
+          where: {
+              id: Number(req.params.id)
+          },
+          data: {
+              title: title,
+              description: description,
+              price: parseFloat(price),
+              quantity: parseInt(quantity),
+              categoryId: parseInt(categoryId),
+              images: {
+                  create: images.map((item) => ({
+                      asset_id: item.asset_id,
+                      public_id: item.public_id,
+                      url: item.url,
+                      secure_url: item.secure_url
+                  }))
+              }
+          }
+      })
+      res.send(product)
   } catch (err) {
-    //err
-    console.log(err);
-    res
-      .status(500)
-      .json({ massage: "Server Error In Controllers/Update Product" });
+      console.log(err)
+      res.status(500).json({ message: "Server error" })
   }
-};
+}
 exports.remove = async (req, res) => {
   try {
     //code
