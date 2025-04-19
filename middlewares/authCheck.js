@@ -22,8 +22,8 @@ exports.authCheck = async (req, res, next) => {
       return res.status(401).json({ massage: "This Accout is disabled" });
     }
 
-    console.log(user);
-    console.log("Hello Middlewrevvv");
+    // console.log(user);
+    // console.log("Hello Middlewre");
 
     next();
   } catch (err) {

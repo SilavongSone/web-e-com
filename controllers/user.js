@@ -37,7 +37,6 @@ exports.changeStatus = async (req, res) => {
     });
   }
 };
-
 exports.changeRole = async (req, res) => {
   try {
     //code
@@ -71,51 +70,83 @@ exports.userCart = async (req, res) => {
     }
 
     // Find user's cart
+    // const userCart = await prisma.cart.findFirst({
+    //   where: { userId: user.id },
+    //   include: { products: true }, // Include products in the cart
+    // });
     const userCart = await prisma.cart.findFirst({
-      where: { userId: user.id },
+      where: { id: Number(req.user.id) },
       include: { products: true }, // Include products in the cart
     });
+    // console.log(user);
+    await prisma.productOnCart.deleteMany({
+      where: {
+        cart: {
+          orderedById: user.id,
+        },
+      },
+    });
+    //delete oldcart
+    await prisma.cart.deleteMany({
+      where: {
+        orderedById: user.id,
+      },
+    });
+    // cart ready
+    let products = cart.map((item) => {
+      return {
+        productId: item.id,
+        count: item.count,
+        price: item.price,
+      };
+    });
+    // cart caculate
+    let cartTotal = products.reduce((sum, item) => {
+      sum += item.price * item.count;
+      return sum;
+    }, 0);
 
-    if (userCart) {
-      // Delete products from cart first
-      await prisma.productOnCart.deleteMany({
-        where: { cartId: userCart.id },
-      });
+    // new cart
+    const newCart = await prisma.cart.create({
+      data: {
+        cartTotal: cartTotal,
+        orderedById: user.id,
+        products: {
+          createMany: {
+            data: products,
+          },
+        },
+      },
+    });
 
-      // Delete the cart itself
-      await prisma.cart.deleteMany({
-        where: { userId: user.id },
-      });
-    }
-
-    res.send("Hello from userCart");
+    res.send("Add Cart Success");
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Server Error In Controllers/user/exports.userCart" });
+    res
+      .status(500)
+      .json({ message: "Server Error In Controllers/user/exports.userCart" });
   }
 };
-
-
-
-// exports.userCart = async (req, res) => {
-//   try {
-//     //code
-
-//     // const users = await prisma.user.findMany();
-//     res.send("Hello from userCart");
-//   } catch (err) {
-//     console.log(err);
-//     res.status(500).json({
-//       massage: "Server Error In Controllers/user/exports.userCart",
-//     });
-//   }
-// };
 exports.getUserCart = async (req, res) => {
   try {
     //code
-
+    // req.user.id
+    const cart = await prisma.cart.findFirst({
+      where: { orderedById: Number(req.user.id) },
+      include: {
+        products: {
+          include: {
+            product: true, // Include product details
+          },
+        },
+      }, // Include products in the cart
+    });
+    // console.log(cart);
     // const users = await prisma.user.findMany();
-    res.send("Hello from getUserCart");
+    res.json({
+      products: cart.products,
+      cartTotal: cart.cartTotal,
+    });
   } catch (err) {
     console.log(err);
     res.status(500).json({
@@ -126,9 +157,42 @@ exports.getUserCart = async (req, res) => {
 exports.emptyCart = async (req, res) => {
   try {
     //code
+    const cart = await prisma.cart.findFirst({
+      where: { orderedById: Number(req.user.id) },
+      include: {
+        products: {
+          include: {
+            product: true, // Include product details
+          },
+        },
+      }, // Include products in the cart
+    });
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+    await prisma.productOnCart.deleteMany({
+      where: {
+        cart: {
+          orderedById: Number(req.user.id),
+        },
+      },
+    });
+    const result = await prisma.cart.deleteMany({
+      where: {
+        orderedById: Number(req.user.id),
+      },
+    });
+
+    console.log(cart);
 
     // const users = await prisma.user.findMany();
-    res.send("Hello from emptyCart");
+    res.send("Empty Cart Success");
+    deletedCount = result.count;
+    if (deletedCount > 0) {
+      console.log(`Deleted ${deletedCount} cart(s)`);
+    } else {
+      console.log("No carts found to delete.");
+    }
   } catch (err) {
     console.log(err);
     res
@@ -139,9 +203,15 @@ exports.emptyCart = async (req, res) => {
 exports.saveAddress = async (req, res) => {
   try {
     //code
-
-    // const users = await prisma.user.findMany();
-    res.send("Hello from saveAddress");
+    const { address } = req.body;
+    console.log(address);
+    const addressUser = await prisma.user.update({
+      where: { id: Number(req.user.id) },
+      data: { address: address },
+    });
+    res.json({
+      massage: "Save Address Success",
+    });
   } catch (err) {
     console.log(err);
     res.status(500).json({
@@ -149,23 +219,104 @@ exports.saveAddress = async (req, res) => {
     });
   }
 };
+
 exports.saveOrder = async (req, res) => {
   try {
-    //code
+    // Step
+    // Step 1: Get User Cart
+    const Usercart = await prisma.cart.findFirst({
+      where: { orderedById: Number(req.user.id) },
+      include: {
+        products: true,
+      }, // Include products in the cart
+    });
 
-    // const users = await prisma.user.findMany();
-    res.send("Hello from saveOrder");
+    //check cart empty
+    if (!Usercart || Usercart.products.length === 0) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+
+    // check quantity
+    for (const item of Usercart.products) {
+      const product = await prisma.product.findFirst({
+        where: { id: item.productId },
+        select: { quantity: true, title: true },
+      });
+
+      if (product.quantity < item.count) {
+        return res
+          .status(400)
+          .json({ ok: false, message: `ຂໍອະໄພ ສິນຄ້າ ${product.title} ໝົດ` });
+      }
+    }
+
+    // Calculate cart total
+    const cartTotal = Usercart.products.reduce((total, item) => {
+      return total + item.price * item.count;
+    }, 0);
+
+    // Step 2: Create a new Order
+    const order = await prisma.order.create({
+      data: {
+        products: {
+          create: Usercart.products.map((item) => ({
+            productId: item.productId,
+            count: item.count,
+            price: item.price,
+          })),
+        },
+        orderedBy: {
+          connect: {
+            id: req.user.id,
+          },
+        },
+        cartTotal: cartTotal, // Add the required cartTotal field
+      },
+    });
+
+    // Step 3: Update the Product Quantity
+    for (const item of Usercart.products) {
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: { quantity: { decrement: item.count } },
+      });
+    }
+    // Step 4: Clear the Cart
+    await prisma.productOnCart.deleteMany({
+      where: {
+        cart: {
+          orderedById: Number(req.user.id),
+        },
+      },
+    });
+    res.json({
+      ok: true, order
+    });
+
   } catch (err) {
     console.log(err);
     res
       .status(500)
-      .json({ massage: "Server Error In Controllers/user/exports.saveOrder" });
+      .json({ message: "Server Error In Controllers/user/exports.saveOrder" });
   }
 };
 exports.getOrder = async (req, res) => {
   try {
     //code
-
+    const orders = await prisma.order.findMany({
+      where: { orderedById: Number(req.user.id) },
+      include: {
+        products: {
+          include: {
+            product: true, // Include product details
+          },
+        },
+      }, // Include products in the cart
+    });
+    if (!orders) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    console.log(orders);
     // const users = await prisma.user.findMany();
     res.send("Hello from getOrder");
   } catch (err) {
