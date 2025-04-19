@@ -188,15 +188,25 @@ model Category {
   updated  DateTime  @updatedAt
 }
 
+// model Cart {
+//   id        Int            @id @default(autoincrement())
+//   products  ProductCart[]
+//   cartTotal Float
+//   orderBy   User           @relation(fields: [orderById], references: [id])
+//   orderById Int
+//   created   DateTime       @default(now())
+//   updated   DateTime       @updatedAt
+// }
+
 model Cart {
-  id        Int            @id @default(autoincrement())
+  id        Int    @id @default(autoincrement())
+  user      User   @relation(fields: [userId], references: [id])
+  userId    Int
+  created   DateTime @default(now())
+  updated   DateTime @updatedAt
   products  ProductCart[]
-  cartTotal Float
-  orderBy   User           @relation(fields: [orderById], references: [id])
-  orderById Int
-  created   DateTime       @default(now())
-  updated   DateTime       @updatedAt
 }
+
 
 model ProductCart {
   id        Int        @id @default(autoincrement())

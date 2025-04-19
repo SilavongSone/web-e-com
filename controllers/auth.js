@@ -18,14 +18,14 @@ exports.register = async (req, res) => {
       });
     }
     // Step 2 : Check Email in DB
-    const user = await prisma.user.findUnique({
-      where: {
-        email: email,
-      },
-    });
-    if (!user) {
-      return res.status(400).json({ message: "User Already Exists" });
-    }
+    // const user = await prisma.user.findUnique({
+    //   where: {
+    //     email: email,
+    //   },
+    // });
+    // if (!user) {
+    //   return res.status(400).json({ message: "User Already Exists" });
+    // }
 
     // Step 3 : Hash Password
     const hashPassword = await bcrypt.hash(password, 10);
