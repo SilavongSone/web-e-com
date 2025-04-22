@@ -8,7 +8,11 @@ const {
   remove,
   listBy,
   searchFilters,
+  createImages,
+  removeImage,
 } = require("../controllers/product");
+
+const { authCheck, adminCheck } = require("../middlewares/authCheck");
 
 // @ENDPOINT http://localhost:5000/api/product
 router.post("/product", create);
@@ -18,5 +22,10 @@ router.post("/product/:id", update);
 router.delete("/product/:id", remove);
 router.post("/productBy", listBy);
 router.post("/search/filters", searchFilters);
+
+router.post("/images", authCheck, adminCheck, createImages);
+router.post("/removeimages", authCheck, adminCheck, removeImage);
+
+
 
 module.exports = router;

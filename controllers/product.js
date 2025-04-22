@@ -1,9 +1,11 @@
 const prisma = require("../config/prisma");
+const cloudinary = require("cloudinary").v2;
 
 exports.create = async (req, res) => {
   try {
     // code
-    const { title, description, price, quantity, categoryId, images } = req.body
+    const { title, description, price, quantity, categoryId, images } =
+      req.body;
     // console.log(title, description, price, quantity, images)
     const product = await prisma.product.create({
       data: {
@@ -17,37 +19,36 @@ exports.create = async (req, res) => {
             asset_id: item.asset_id,
             public_id: item.public_id,
             url: item.url,
-            secure_url: item.secure_url
-          }))
-        }
-      }
-    })
-    res.send(product)
+            secure_url: item.secure_url,
+          })),
+        },
+      },
+    });
+    res.send(product);
   } catch (err) {
-    console.log(err)
-    res.status(500).json({ message: "Server error" })
+    console.log(err);
+    res.status(500).json({ message: "Server error" });
   }
-}
-
+};
 
 exports.list = async (req, res) => {
   try {
-      // code
-      const { count } = req.params
-      const products = await prisma.product.findMany({
-          take: parseInt(count),
-          orderBy: { createdAt: "desc" },
-          include: {
-              category: true,
-              images: true
-          }
-      })
-      res.send(products)
+    // code
+    const { count } = req.params;
+    const products = await prisma.product.findMany({
+      take: parseInt(count),
+      orderBy: { createdAt: "desc" },
+      include: {
+        category: true,
+        images: true,
+      },
+    });
+    res.send(products);
   } catch (err) {
-      console.log(err)
-      res.status(500).json({ message: "Server error" })
+    console.log(err);
+    res.status(500).json({ message: "Server error" });
   }
-}
+};
 exports.read = async (req, res) => {
   try {
     //code
@@ -73,42 +74,43 @@ exports.read = async (req, res) => {
 };
 exports.update = async (req, res) => {
   try {
-      // code
-      const { title, description, price, quantity, categoryId, images } = req.body
-      // console.log(title, description, price, quantity, images)
+    // code
+    const { title, description, price, quantity, categoryId, images } =
+      req.body;
+    // console.log(title, description, price, quantity, images)
 
-      await prisma.image.deleteMany({
-          where: {
-              productId: Number(req.params.id)
-          }
-      })
+    await prisma.image.deleteMany({
+      where: {
+        productId: Number(req.params.id),
+      },
+    });
 
-      const product = await prisma.product.update({
-          where: {
-              id: Number(req.params.id)
-          },
-          data: {
-              title: title,
-              description: description,
-              price: parseFloat(price),
-              quantity: parseInt(quantity),
-              categoryId: parseInt(categoryId),
-              images: {
-                  create: images.map((item) => ({
-                      asset_id: item.asset_id,
-                      public_id: item.public_id,
-                      url: item.url,
-                      secure_url: item.secure_url
-                  }))
-              }
-          }
-      })
-      res.send(product)
+    const product = await prisma.product.update({
+      where: {
+        id: Number(req.params.id),
+      },
+      data: {
+        title: title,
+        description: description,
+        price: parseFloat(price),
+        quantity: parseInt(quantity),
+        categoryId: parseInt(categoryId),
+        images: {
+          create: images.map((item) => ({
+            asset_id: item.asset_id,
+            public_id: item.public_id,
+            url: item.url,
+            secure_url: item.secure_url,
+          })),
+        },
+      },
+    });
+    res.send(product);
   } catch (err) {
-      console.log(err)
-      res.status(500).json({ message: "Server error" })
+    console.log(err);
+    res.status(500).json({ message: "Server error" });
   }
-}
+};
 exports.remove = async (req, res) => {
   try {
     //code
@@ -207,7 +209,7 @@ const handdleCategory = async (req, res, categoryId) => {
       where: {
         categoryId: {
           in: categoryId.map((id) => Number(id)),
-        }
+        },
       },
       include: {
         category: true,
@@ -248,5 +250,36 @@ exports.searchFilters = async (req, res) => {
     res
       .status(500)
       .json({ massage: "Server Error In Controllers/Search Product" });
+  }
+};
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+exports.createImages = async (req, res) => {
+  try {
+    //code
+    const result = await cloudinary.uploader.upload(req.body.image, {
+      public_id: `Ecom-${Date.now()}`,
+      resource_type: "auto",
+      folder: "Ecom",
+    });
+    res.send(result);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.removeImage = async (req, res) => {
+  try {
+    //code
+    res.send("Hello Remove Images Controller");
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server error" });
   }
 };

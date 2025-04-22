@@ -18,14 +18,11 @@ exports.register = async (req, res) => {
       });
     }
     // Step 2 : Check Email in DB
-    // const user = await prisma.user.findUnique({
-    //   where: {
-    //     email: email,
-    //   },
-    // });
-    // if (!user) {
-    //   return res.status(400).json({ message: "User Already Exists" });
-    // }
+
+    const user = await prisma.user.findUnique({ where: { email: email } });
+    if (user) {
+      return res.status(400).json({ message: "Email Already Exist" });
+    }
 
     // Step 3 : Hash Password
     const hashPassword = await bcrypt.hash(password, 10);
@@ -81,10 +78,40 @@ exports.login = async (req, res) => {
     res.status(500).json({ massage: "Server Error In Controllers/auth/Login" });
   }
 };
+
 exports.currentUser = async (req, res) => {
   try {
     //code
-    res.send("Hello CurrentUser Introller");
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        // enabled: true,
+      },
+    });
+    if (!user) {
+      return res.status(400).json({ message: "User Not Found" });
+    }
+
+    // Step 3 : Create payload
+    const payload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+    // Step 4 : Generate Token
+    jwt.sign(payload, process.env.SECRET, { expiresIn: "1d" }, (err, token) => {
+      if (err) {
+        return res.status(500).json({ message: "JWT Error" });
+      }
+      res.json({ payload, token });
+    });
+
+
+    res.json(user);
   } catch (err) {
     //err
     console.log(err);
