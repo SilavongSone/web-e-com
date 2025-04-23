@@ -274,12 +274,22 @@ exports.createImages = async (req, res) => {
   }
 };
 
+
 exports.removeImage = async (req, res) => {
   try {
     //code
-    res.send("Hello Remove Images Controller");
+    console.log("removeImage", req.public_id);
+    const { public_id } = req.body;
+    console.log("public_id", public_id);
+    cloudinary.uploader.destroy(public_id, (err, result) => {
+      if (err) {
+        console.error("Error deleting image:", err);
+        return res.status(500).json({ message: "Error deleting image" });
+      }
+      res.send(result);
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server error" });
   }
-};
+}
