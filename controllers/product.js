@@ -195,7 +195,7 @@ const handdleQuery = async (req, res, query) => {
       where: {
         OR: [
           {
-            name: {
+            title: {
               contains: query,
             },
           },
