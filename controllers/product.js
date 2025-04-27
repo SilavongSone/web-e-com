@@ -1,6 +1,12 @@
 const prisma = require("../config/prisma");
 const cloudinary = require("cloudinary").v2;
 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 exports.create = async (req, res) => {
   try {
     // code
@@ -111,24 +117,56 @@ exports.update = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 exports.remove = async (req, res) => {
   try {
-    //code
     const { id } = req.params;
-    await prisma.product.delete({
+
+    // ดึง product พร้อมภาพจาก Cloudinary
+    const product = await prisma.product.findFirst({
       where: {
-        id: parseInt(id),
+        id: Number(id),
+      },
+      include: {
+        images: true,
       },
     });
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    // promise.all
+    const deleteImages = product.images.map(
+      (image) =>
+        new Promise((resolve, reject) => {
+          cloudinary.uploader.destroy(image.public_id, (err, result) => {
+            if (err) {
+              console.error("Error deleting image:", err);
+              reject(err);
+            } else {
+              resolve(result);
+            }
+          });
+        })
+    );
+
+    // TODO: ลบภาพจาก Cloudinary ที่นี่ (ใช้ product.images เพื่อ loop แล้วลบ)
+    await Promise.all(deleteImages);
+    // ลบสินค้าออกจากฐานข้อมูล
+    await prisma.product.delete({
+      where: {
+        id: Number(id),
+      },
+    });
+
     res.send("Product Deleted");
   } catch (err) {
-    //err
     console.log(err);
     res
       .status(500)
-      .json({ massage: "Server Error In Controllers/Remove Product" });
+      .json({ message: "Server Error In Controllers/Remove Product" });
   }
 };
+
 exports.listBy = async (req, res) => {
   try {
     //code
@@ -157,7 +195,7 @@ const handdleQuery = async (req, res, query) => {
       where: {
         OR: [
           {
-            name: {
+            title: {
               contains: query,
             },
           },
@@ -253,12 +291,6 @@ exports.searchFilters = async (req, res) => {
   }
 };
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
 exports.createImages = async (req, res) => {
   try {
     //code
@@ -277,7 +309,16 @@ exports.createImages = async (req, res) => {
 exports.removeImage = async (req, res) => {
   try {
     //code
-    res.send("Hello Remove Images Controller");
+    console.log("removeImage", req.public_id);
+    const { public_id } = req.body;
+    console.log("public_id", public_id);
+    cloudinary.uploader.destroy(public_id, (err, result) => {
+      if (err) {
+        console.error("Error deleting image:", err);
+        return res.status(500).json({ message: "Error deleting image" });
+      }
+      res.send(result);
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server error" });

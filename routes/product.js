@@ -18,7 +18,7 @@ const { authCheck, adminCheck } = require("../middlewares/authCheck");
 router.post("/product", create);
 router.get("/products/:count", list);
 router.get("/product/:id", read);
-router.post("/product/:id", update);
+router.put("/product/:id", update);
 router.delete("/product/:id", remove);
 router.post("/productBy", listBy);
 router.post("/search/filters", searchFilters);
