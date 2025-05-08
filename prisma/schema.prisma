@@ -45,6 +45,20 @@ model Product {
   categoryId  Int?
 }
 
+// model Order {
+//   id              Int              @id @default(autoincrement())
+//   products        ProductOnOrder[]
+//   cartTotal       Float
+//   orderStatus     String           @default("Not Process")
+//   createdAt       DateTime         @default(now())
+//   updatedAt       DateTime         @updatedAt
+//   orderedBy       User             @relation(fields: [orderedById], references: [id])
+//   orderedById     Int
+//   // stripePaymentId String
+//   // amount          Int
+//   // status          String
+//   // currentcy       String
+// }
 model Order {
   id              Int              @id @default(autoincrement())
   products        ProductOnOrder[]
@@ -54,11 +68,11 @@ model Order {
   updatedAt       DateTime         @updatedAt
   orderedBy       User             @relation(fields: [orderedById], references: [id])
   orderedById     Int
-  // stripePaymentId String
-  // amount          Int
-  // status          String
-  // currentcy       String
+
+  shippingAddress String?          // ➕ ที่อยู่จัดส่ง
+  phoneNumber     String?          // ➕ เบอร์โทรติดต่อ
 }
+
 
 model ProductOnOrder {
   id        Int     @id @default(autoincrement())
