@@ -54,63 +54,139 @@ exports.changeRole = async (req, res) => {
       .json({ massage: "Server Error In Controllers/user/exports.changeRole" });
   }
 };
+// exports.userCart = async (req, res) => {
+//   try {
+//     const { cart } = req.body;
+//     console.log(cart);
+//     console.log(req.user.id);
+
+//     // Find user
+//     const user = await prisma.user.findFirst({
+//       where: { id: Number(req.user.id) },
+//     });
+
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     // Find user's cart
+//     // const userCart = await prisma.cart.findFirst({
+//     //   where: { userId: user.id },
+//     //   include: { products: true }, // Include products in the cart
+//     // });
+//     const userCart = await prisma.cart.findFirst({
+//       where: { id: Number(req.user.id) },
+//       include: { products: true }, // Include products in the cart
+//     });
+//     // console.log(user);
+//     await prisma.productOnCart.deleteMany({
+//       where: {
+//         cart: {
+//           orderedById: user.id,
+//         },
+//       },
+//     });
+//     //delete oldcart
+//     await prisma.cart.deleteMany({
+//       where: {
+//         orderedById: user.id,
+//       },
+//     });
+//     // cart ready
+//     let products = cart.map((item) => {
+//       return {
+//         productId: item.id,
+//         count: item.count,
+//         price: item.price,
+//       };
+//     });
+//     // cart caculate
+//     let cartTotal = products.reduce((sum, item) => {
+//       sum += item.price * item.count;
+//       return sum;
+//     }, 0);
+
+//     // new cart
+//     const newCart = await prisma.cart.create({
+//       data: {
+//         cartTotal: cartTotal,
+//         orderedById: user.id,
+//         products: {
+//           createMany: {
+//             data: products,
+//           },
+//         },
+//       },
+//     });
+
+//     res.send("Add Cart Success");
+//   } catch (err) {
+//     console.error(err);
+//     res
+//       .status(500)
+//       .json({ message: "Server Error In Controllers/user/exports.userCart" });
+//   }
+// };
 exports.userCart = async (req, res) => {
   try {
     const { cart } = req.body;
-    console.log(cart);
-    console.log(req.user.id);
+    const userId = Number(req.user.id);
 
-    // Find user
-    const user = await prisma.user.findFirst({
-      where: { id: Number(req.user.id) },
+    console.log(cart);
+    console.log("User ID:", userId);
+
+    // หาผู้ใช้
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
     });
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "ບໍ່ພົບຜູ້ໃຊ້" });
     }
 
-    // Find user's cart
-    // const userCart = await prisma.cart.findFirst({
-    //   where: { userId: user.id },
-    //   include: { products: true }, // Include products in the cart
-    // });
-    const userCart = await prisma.cart.findFirst({
-      where: { id: Number(req.user.id) },
-      include: { products: true }, // Include products in the cart
+    // ตรวจสอบว่า product ที่ส่งมามีอยู่ในระบบจริงไหม
+    const productIds = cart.map((item) => item.id);
+    const existingProducts = await prisma.product.findMany({
+      where: { id: { in: productIds } },
     });
-    // console.log(user);
+
+    const existingProductIds = new Set(existingProducts.map(p => p.id));
+    const invalidProducts = productIds.filter(id => !existingProductIds.has(id));
+
+    if (invalidProducts.length > 0) {
+      return res.status(400).json({ message: `ພົບ productId ທີ່ບໍ່ມີຢູ່ໃນລະບົບ: ${invalidProducts.join(", ")}` });
+    }
+
+    // ลบตะกร้าเก่า
     await prisma.productOnCart.deleteMany({
       where: {
         cart: {
-          orderedById: user.id,
+          orderedById: userId,
         },
       },
     });
-    //delete oldcart
+
     await prisma.cart.deleteMany({
       where: {
-        orderedById: user.id,
+        orderedById: userId,
       },
     });
-    // cart ready
-    let products = cart.map((item) => {
-      return {
-        productId: item.id,
-        count: item.count,
-        price: item.price,
-      };
-    });
-    // cart caculate
-    let cartTotal = products.reduce((sum, item) => {
-      sum += item.price * item.count;
-      return sum;
-    }, 0);
 
-    // new cart
-    const newCart = await prisma.cart.create({
+    // เตรียมข้อมูลสินค้าในตะกร้า
+    const products = cart.map((item) => ({
+      productId: item.id,
+      count: item.count,
+      price: item.price,
+    }));
+
+    // คำนวณราคารวม
+    const cartTotal = products.reduce((sum, item) => sum + item.price * item.count, 0);
+
+    // สร้างตะกร้าใหม่
+    await prisma.cart.create({
       data: {
-        cartTotal: cartTotal,
-        orderedById: user.id,
+        cartTotal,
+        orderedById: userId,
         products: {
           createMany: {
             data: products,
@@ -119,14 +195,13 @@ exports.userCart = async (req, res) => {
       },
     });
 
-    res.send("Add Cart Success");
+    res.status(200).send("ເພີ່ມໃສ່ກະຕ່າສຳເລັດແລ້ວ");
   } catch (err) {
-    console.error(err);
-    res
-      .status(500)
-      .json({ message: "Server Error In Controllers/user/exports.userCart" });
+    console.error("ເກີດຄວາມຜິດພາດໃນ userCart:", err);
+    res.status(500).json({ message: "user error in crontroler Server (userCart)" });
   }
 };
+
 exports.getUserCart = async (req, res) => {
   try {
     //code
@@ -263,13 +338,16 @@ exports.saveOrder = async (req, res) => {
             productId: item.productId,
             count: item.count,
             price: item.price,
+
           })),
         },
+        
         orderedBy: {
           connect: {
             id: req.user.id,
           },
         },
+
         cartTotal: cartTotal, // Add the required cartTotal field
       },
     });
